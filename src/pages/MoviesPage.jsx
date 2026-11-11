@@ -1,5 +1,6 @@
 import { apiUrl, getAuthHeaders } from "../api.js";
 import { useEffect, useState } from "react";
+import * as Sentry from "@sentry/react";
 
 import MovieCreate from "../components/MovieCreate.jsx";
 import MovieEdit from "../components/MovieEdit.jsx";
@@ -90,6 +91,9 @@ function MoviesPage({ isAdmin = false }) {
         setMovies(data);
       } catch (error) {
         console.error("영화 목록 요청 실패:", error);
+        Sentry.captureException(error, {
+          tags: { operation: "movie_list" },
+        });
         setError("영화 목록을 불러오지 못했습니다. 다시 시도해 주세요.");
       } finally {
         setIsLoading(false);
@@ -116,10 +120,21 @@ function MoviesPage({ isAdmin = false }) {
       }
 
       const data = await response.json();
-      // 실습: 이 위치에 결과가 0건일 때 GA로 이벤트를 보내는 코드를 추가합니다.
+      if (
+        searchKeyword &&
+        data.length === 0 &&
+        typeof window.gtag === "function"
+      ) {
+        window.gtag("event", "movie_search_no_results", {
+          search_term: searchKeyword,
+        });
+      }
       setMovies(data);
     } catch (error) {
       console.error("영화 검색 실패:", error);
+      Sentry.captureException(error, {
+        tags: { operation: "movie_search" },
+      });
       setError("영화 목록을 불러오지 못했습니다. 다시 시도해 주세요.");
     } finally {
       setIsLoading(false);
